@@ -356,7 +356,155 @@ def _build_galaxy(**kwds):
         test_files=test_files
     )
 
+###############  CWL 2 GALAXY  ####################
+def build_cwl2galaxy(file, **kwds):
+    # process raw cite urls
+    # cite_urls = kwds.get("cite_url", [])
+    # del kwds["cite_url"]
+    # citations = list(map(UrlCitation, cite_urls))
+    # kwds["bibtex_citations"] = citations
+    tool = Cwl(file)
+    kwds["tool"] = kwds.get("tool")
+    kwds["id"] = tool.name
+    kwds["name"] = tool.label
+    kwds["command"] = "cwltool '$__tool_directory__/tool.cwl' '$__tool_directory__/test.yml "
+    kwds["requirements"] = [] # objet requirement
+    kwds["help"] = tool.help
+    kwds["inputs"] = tool.inputs
+    kwds["outputs"] = tool.outputs
+    kwds["macros"] = None 
+    kwds["tests"] = []
+    kwds["test_case"] = None
+    
+    
+    # command_io = CommandIO(**kwds)
+    # test_case = command_io.test_case()
+    # tests, test_files = _handle_tests(kwds, test_case)
+    # kwds["tests"] = tests
 
+ 
+    # Render tool content from template.
+    contents = _render(kwds)
+    # print("render")
+    # print(contents)
+    tool_files = []
+    test_files = None
+    #append_macro_file(tool_files, kwds)
+
+    return ToolDescription(
+        contents,
+        tool_files=tool_files,
+        test_files=test_files
+    )
+
+def write_tool(ctx, tool_description, **kwds):
+    """Write a tool description to the file system guided by supplied CLI kwds."""
+    output = kwds.get("tool")
+    if not io.can_write_to_path(output, **kwds):
+        ctx.exit(1)
+
+    io.write_file(output, tool_description.contents)
+    io.info("Tool written to %s" % output)
+
+# not used ?
+    # for tool_file in tool_description.tool_files:
+    #     if tool_file.contents is None:
+    #         continue
+
+    #     path = tool_file.filename
+    #     if not io.can_write_to_path(path, **kwds):
+    #         ctx.exit(1)
+    #     io.write_file(path, tool_file.contents)
+    #     io.info("Tool %s written to %s" % (tool_file.description, path))
+
+# TODO add test_file option :
+    # if tool_description.test_files:
+    #     if not os.path.exists("test-data"):
+    #         io.info("No test-data directory, creating one.")
+    #         os.makedirs('test-data')
+    #     for test_file in tool_description.test_files:
+    #         io.info("Copying test-file %s" % test_file)
+    #         try:
+    #             shutil.copy(test_file, 'test-data')
+    #         except Exception as e:
+    #             io.info("Copy of %s failed: %s" % (test_file, e))
+
+
+class Cwl:
+    def __init__(self, dict):
+        self.dict = dict
+        if "id" in dict:
+            self.name = dict["id"]
+        else:
+            self.name = "tool"
+        if "label" in dict:
+            self.label = dict["label"]
+        else :
+            self.label = self.name
+        if "doc" in dict:
+            self.help = dict["doc"]
+        else:
+            self.help = None
+        self.nbinputs = len(dict["inputs"])
+        self.inputs = []
+        for input in self.dict['inputs']:
+            self.inputs.append(Input_cwl(self.dict['inputs'][input], input))
+
+        self.nboutputs = len(dict["outputs"])
+        self.outputs = []
+        for output in self.dict['outputs']:
+            self.outputs.append(Output_cwl(self.dict['outputs'][output], output))
+
+
+class Input_cwl(object):
+
+    def __init__(self, dict, name):
+        self.name = name
+        self.type = dict["type"]
+        if "label" in dict:
+            self.label = dict["label"]
+        else :
+            self.label = name
+        if "default" in dict:
+            self.default = dict["default"]
+        else :
+            self.default = None
+        if "doc" in dict:
+            self.doc = dict["doc"]  
+        else :
+            self.doc = None
+        if "format" in dict:
+            self.format = dict["format"]    #trouver comment récup le format (RDF)
+        else :
+            self.format = None
+    def __str__(self):
+        template = '<param type="{0}" name="{1}" label="{2}"'
+        if self.default != None :
+            template+=' default="{3}"'
+        if self.doc != None :
+            template+= ' help="{4}"'
+        if self.format != None :
+            template+=' format="{5}"/>' #format only if type is data
+        template+='/>'
+        return template.format(self.type, self.name, self.label, self.default, self.doc, self.format)
+
+
+class Output_cwl(object):
+    def __init__(self, dict, name):
+        self.name = name
+        self.type = dict["type"]
+        if "doc" in dict:
+            self.doc = dict["doc"]   
+        if "format" in dict:
+            self.format = dict["format"]   
+        if "outputBinding" in dict and "glob" in dict["outputBinding"]:
+            self.from_path = dict["outputBinding"]["glob"]
+    def __str__(self):
+        ## TODO : label (add tool's name) 
+        template = '<data name="{0}" format="{1}" from_work_dir="{2}" />'
+        return template.format(self.name, self.format, self.from_path)
+
+###############  CWL 2 GALAXY  #################### 
 def append_macro_file(tool_files, kwds):
     macro_contents = None
     if kwds["macros"]:

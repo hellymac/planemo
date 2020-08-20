@@ -1705,6 +1705,19 @@ def tool_init_tool_option():
         help="Output path for new tool (default is <id>.xml)",
     )
 
+def cwl2galaxy_tool_option():
+    return planemo_option(
+        "-t",
+        "--tool",
+        default=None,
+        type=click.Path(exists=False,
+                        file_okay=True,
+                        dir_okay=False,
+                        writable=True,
+                        resolve_path=True),
+        help="Output path for new tool (default is <id>.xml)",
+    )
+
 
 def tool_init_name_option(prompt=True, help="Name for new tool (user facing)"):
     return planemo_option(

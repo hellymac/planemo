@@ -15,10 +15,10 @@ from planemo import tool_builder
 from planemo.cli import command_function
 
 # add name option to name the output file
-@click.command("tool_cwl2galaxy")
+@click.command("cwl2galaxy")
 @options.force_option(what="tool")
 @options.cwl2galaxy_tool_option()
-@click.option('filename', '--path',  type=click.Path(exists=True))
+@click.option('filename', '--path',  type=click.Path(exists=True)) # TODO: options.cwl2galaxy_path_option
 @command_function
 def cli(ctx, filename, **kwds):
     """Generate tool outline from given CWL file."""
