@@ -1,0 +1,23 @@
+<tool id="tool" name="tool" version="test version" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        touch job.yml 
+'message: $message' >> job.yml 
+'test_int: $test_int' >> job.yml 
+'test_File: $test_File' >> job.yml 
+
+ cwltool '$__tool_directory__/tool.cwl' '$__tool_directory__/job.yml 
+    ]]></command>
+    <inputs>
+        <param type="text" name="message" label="message" optional="False"/>
+        <param type="integer" name="test_int" label="test_int" optional="False" value="3"/>
+        <param type="data" name="test_File" label="test_File" optional="True"/>
+    </inputs>
+    <outputs>
+        <data name="test_out" format="None"/>
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>
