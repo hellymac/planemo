@@ -13,6 +13,7 @@ from collections import namedtuple
 
 from planemo import io
 from planemo import templates
+#from galaxy.lib.galaxy.tool_util.cwl import representation
 
 REUSING_MACROS_MESSAGE = ("Macros file macros.xml already exists, assuming "
                           " it has relevant planemo-generated definitions.")
@@ -357,17 +358,41 @@ def _build_galaxy(**kwds):
     )
 
 ###############  CWL 2 GALAXY  ####################
+def write_command(inputs):
+    """ write the tool XML command : create cwl job file """
+    command = "touch job.yml \n"
+    for i in inputs:
+        if i.type == "string" or "int" or "float" or "boolean" or "long" or "double" or "enum":     
+            command += "\'" +str(i.name)+": $"+(str(i.name))+ "\' >> job.yml \n" 
+          # TODO : Format file
+          # TODO : conditionnal
+        if i.type == "File":
+            command += "\'" + str(i.name) + ": \' >> job.yml \n"
+            command += "\'  class: File \' >> job.yml \n"
+            command += "\'  path: $" + str(i.name) +"\' >> job.yml \n" 
+            if i.format: # TO DO : URI
+                command += "\'  format: $" + str(i.format) + "\' >> job.yml \n"
+        if i.type == "Directory":
+            command += "\'" + str(i.name) + ": \' >> job.yml \n"
+            command += "\'  class: Directory \' >> job.yml \n"
+            command += "\'  path: $" + str(i.name) +"\' >> job.yml \n" 
+    # TO DO : record /array
+    command +="\n cwltool '$__tool_directory__/tool.cwl' '$__tool_directory__/job.yml "
+    return command
+
 def build_cwl2galaxy(file, **kwds):
     # process raw cite urls
     # cite_urls = kwds.get("cite_url", [])
     # del kwds["cite_url"]
     # citations = list(map(UrlCitation, cite_urls))
     # kwds["bibtex_citations"] = citations
+    
+    ### multiple="true" optional="true"
     tool = Cwl(file)
     kwds["tool"] = kwds.get("tool")
     kwds["id"] = tool.name
     kwds["name"] = tool.label
-    kwds["command"] = "cwltool '$__tool_directory__/tool.cwl' '$__tool_directory__/test.yml "
+    kwds["command"] = write_command(tool.inputs) 
     kwds["requirements"] = [] # objet requirement
     kwds["help"] = tool.help
     kwds["inputs"] = tool.inputs
@@ -375,8 +400,10 @@ def build_cwl2galaxy(file, **kwds):
     kwds["macros"] = None 
     kwds["tests"] = []
     kwds["test_case"] = None
+    kwds["version"] = "test version"
     
-    
+    # for input in tool.inputs:
+    #     print(input.type)
     # command_io = CommandIO(**kwds)
     # test_case = command_io.test_case()
     # tests, test_files = _handle_tests(kwds, test_case)
@@ -389,8 +416,7 @@ def build_cwl2galaxy(file, **kwds):
     # print(contents)
     tool_files = []
     test_files = None
-    #append_macro_file(tool_files, kwds)
-
+    
     return ToolDescription(
         contents,
         tool_files=tool_files,
@@ -428,8 +454,7 @@ def write_tool(ctx, tool_description, **kwds):
     #             shutil.copy(test_file, 'test-data')
     #         except Exception as e:
     #             io.info("Copy of %s failed: %s" % (test_file, e))
-
-
+    
 class Cwl:
     def __init__(self, dict):
         self.dict = dict
@@ -445,7 +470,9 @@ class Cwl:
             self.help = dict["doc"]
         else:
             self.help = None
+        
         self.nbinputs = len(dict["inputs"])
+        self.inputs_names = list(self.dict["inputs"].keys())
         self.inputs = []
         for input in self.dict['inputs']:
             self.inputs.append(Input_cwl(self.dict['inputs'][input], input))
@@ -455,20 +482,25 @@ class Cwl:
         for output in self.dict['outputs']:
             self.outputs.append(Output_cwl(self.dict['outputs'][output], output))
 
-
 class Input_cwl(object):
 
     def __init__(self, dict, name):
+        # Changer type : corespondance avec Galaxy types
         self.name = name
+        self.optional = False
         self.type = dict["type"]
+        if self.type[-1]=='?' :
+            self.optional = True
+            self.type = self.type[:-1]
+        self.type = CWL_TO_GALAXY_TYPES[self.type]
         if "label" in dict:
             self.label = dict["label"]
         else :
             self.label = name
         if "default" in dict:
-            self.default = dict["default"]
+            self.value = dict["default"]
         else :
-            self.default = None
+            self.value = None
         if "doc" in dict:
             self.doc = dict["doc"]  
         else :
@@ -478,32 +510,85 @@ class Input_cwl(object):
         else :
             self.format = None
     def __str__(self):
-        template = '<param type="{0}" name="{1}" label="{2}"'
-        if self.default != None :
-            template+=' default="{3}"'
+        template = '<param type="{0}" name="{1}" label="{2}" optional="{3}"'
+        if self.value != None :
+            template+=' value="{4}"'
         if self.doc != None :
-            template+= ' help="{4}"'
+            template+= ' help="{5}"'
         if self.format != None :
-            template+=' format="{5}"/>' #format only if type is data
+            template+=' format="{6}"/>' #format only if type is data
         template+='/>'
-        return template.format(self.type, self.name, self.label, self.default, self.doc, self.format)
-
+        return template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)
 
 class Output_cwl(object):
     def __init__(self, dict, name):
         self.name = name
+        self.optional = False
         self.type = dict["type"]
+        if self.type[-1]=='?' :
+            self.optional = True
+            self.type = self.type[:-1]
+        self.type = CWL_TO_GALAXY_TYPES[self.type]
+        if "label" in dict:
+            self.label = dict["label"]
+        else :
+            self.label = name
         if "doc" in dict:
-            self.doc = dict["doc"]   
+            self.doc = dict["doc"]  
+        else :
+            self.doc = None
         if "format" in dict:
-            self.format = dict["format"]   
+            self.format = dict["format"]    #trouver comment récup le format (RDF)
+        else :
+            self.format = None
         if "outputBinding" in dict and "glob" in dict["outputBinding"]:
             self.from_path = dict["outputBinding"]["glob"]
+        else:
+            self.from_path = None
     def __str__(self):
+     
         ## TODO : label (add tool's name) 
-        template = '<data name="{0}" format="{1}" from_work_dir="{2}" />'
-        return template.format(self.name, self.format, self.from_path)
+        template = '<data name="{0}" format="{1}"'
+        if self.doc != None :
+            template+= ' help="{2}"'
+        if self.from_path != None :
+            template+= ' from_work_dir="{3}"'
+        
+        template+='/>'
+        return template.format(self.name, self.format, self.doc, self.from_path)
 
+CWL_TO_GALAXY_TYPES = {
+    "string": "text",
+    "int": "integer",
+    "File": "data",
+    "boolean": "boolean",
+    "enum": "select",
+    "double": "float",
+    "long": "integer",
+    "float": "float",
+    "Directory": "data_collection",
+    "Any": "field",
+    "array": "data_collection",
+    "null": "null",
+    "record": "data_collection",
+    }
+
+# Galaxy types :  	Describes the parameter type - each different type as different semantics and the tool form widget is different. Currently valid parameter types are: text, integer, float, boolean, genomebuild, select, color, data_column, hidden, hidden_data, baseurl, file, ftpfile, data, data_collection, library_data, drill_down
+# multiple :	Allow multiple valus to be selected. Valid with data and select parameters.
+# {'text', 'integer', 'float', 'color', 'boolean', 'genomebuild', 'library_data', 
+# 'select', 'data_column', 'hidden', 'hidden_data', 'baseurl', 'file', 'data', 
+# 'drill_down', 'group_tag', 'data_collection'}
+
+# Any
+# null	no value
+# boolean	a binary value
+# int	32-bit signed integer
+# long	64-bit signed integer
+# float	single precision (32-bit) IEEE 754 floating-point number
+# double	double precision (64-bit) IEEE 754 floating-point number
+# string	Unicode character sequence
+# File	A File object
+# Directory	A Directory object
 ###############  CWL 2 GALAXY  #################### 
 def append_macro_file(tool_files, kwds):
     macro_contents = None
