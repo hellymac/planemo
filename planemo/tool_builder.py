@@ -538,7 +538,7 @@ class Output_cwl(object):
         else :
             self.doc = None
         if "format" in dict:
-            self.format = dict["format"]    #trouver comment récup le format (RDF)
+            self.format = dict["format"]    # TODO : get format from URI ; get format from glob field 
         else :
             self.format = None
         if "outputBinding" in dict and "glob" in dict["outputBinding"]:
@@ -546,14 +546,11 @@ class Output_cwl(object):
         else:
             self.from_path = None
     def __str__(self):
-     
-        ## TODO : label (add tool's name) 
-        template = '<data name="{0}" format="{1}"'
+        template = '<data name="{0}" format="{1}" ' # 'optional="{2}"'
         if self.doc != None :
             template+= ' help="{2}"'
         if self.from_path != None :
             template+= ' from_work_dir="{3}"'
-        
         template+='/>'
         return template.format(self.name, self.format, self.doc, self.from_path)
 
