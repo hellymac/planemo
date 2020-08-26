@@ -472,15 +472,28 @@ class Cwl:
             self.help = None
         
         self.nbinputs = len(dict["inputs"])
-        self.inputs_names = list(self.dict["inputs"].keys())
         self.inputs = []
-        for input in self.dict['inputs']:
-            self.inputs.append(Input_cwl(self.dict['inputs'][input], input))
-
+    
+        if isinstance(self.dict["inputs"], list) :
+            #handle syntax " - id: param_name" :
+            for i in range(self.nbinputs):
+                self.inputs.append(Input_cwl(self.dict["inputs"][i], self.dict["inputs"][i]["id"]))
+        else:
+            for input in self.dict['inputs']:
+                self.inputs.append(Input_cwl(self.dict['inputs'][input], input))
+                
         self.nboutputs = len(dict["outputs"])
         self.outputs = []
-        for output in self.dict['outputs']:
-            self.outputs.append(Output_cwl(self.dict['outputs'][output], output))
+        
+        if isinstance(self.dict["outputs"], list) :
+            #handle syntax " - id: param_name" :
+            for i in range(self.nboutputs):
+                self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"]))
+        else:
+            for output in self.dict['outputs']:
+                self.outputs.append(Output_cwl(self.dict['outputs'][output], output))  
+
+       
 
 class Input_cwl(object):
 
@@ -488,6 +501,9 @@ class Input_cwl(object):
         # Changer type : corespondance avec Galaxy types
         self.name = name
         self.optional = False
+        # handle when type is a list (record, array, enum)
+        #        when there are multiple types
+        #        when it is type[] (array of type)
         self.type = dict["type"]
         if self.type[-1]=='?' :
             self.optional = True
