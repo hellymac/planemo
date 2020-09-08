@@ -13,6 +13,7 @@ from collections import namedtuple
 
 from planemo import io
 from planemo import templates
+from owlready2 import *
 #from galaxy.lib.galaxy.tool_util.cwl import representation
 
 REUSING_MACROS_MESSAGE = ("Macros file macros.xml already exists, assuming "
@@ -360,25 +361,48 @@ def _build_galaxy(**kwds):
 ###############  CWL 2 GALAXY  ####################
 def write_command(inputs):
     """ write the tool XML command : create cwl job file """
-    command = "touch job.yml \n"
+    command = ""
+   
     for i in inputs:
-        if i.type == "string" or "int" or "float" or "boolean" or "long" or "double" or "enum":     
-            command += "\'" +str(i.name)+": $"+(str(i.name))+ "\' >> job.yml \n" 
-          # TODO : Format file
-          # TODO : conditionnal
-        if i.type == "File":
-            command += "\'" + str(i.name) + ": \' >> job.yml \n"
-            command += "\'  class: File \' >> job.yml \n"
-            command += "\'  path: $" + str(i.name) +"\' >> job.yml \n" 
-            if i.format: # TO DO : URI
-                command += "\'  format: $" + str(i.format) + "\' >> job.yml \n"
-        if i.type == "Directory":
-            command += "\'" + str(i.name) + ": \' >> job.yml \n"
-            command += "\'  class: Directory \' >> job.yml \n"
-            command += "\'  path: $" + str(i.name) +"\' >> job.yml \n" 
-    # TO DO : record /array
-    command +="\n cwltool '$__tool_directory__/tool.cwl' '$__tool_directory__/job.yml "
+        command += input_to_yaml(i)
+        
+    command +="\n cwltool '$__tool_directory__/tool.cwl' $job_gal >> $stdout_gal"
     return command
+
+def input_to_yaml(i):
+    """ Transcribe inputs for the yaml file """
+    command = ""
+    if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     
+        command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
+        
+    if i.type == "data":
+        command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
+        command += "echo \'  class: File \' >> $job_gal; \n"
+        command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
+        if i.format: # TO DO : URI
+            command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
+
+    if i.record :
+        command += "echo \'" + str(i.name) + ": \n"
+        command += input_to_yaml(i.record_inputs) 
+        
+    if i.array :
+        command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
+        "#for $element in enumerate($" + str(i.name) +"):"
+        if i.type == "data" :
+            command += "echo \'  - {class: File, path: $" + str(i.name)
+            if i.format :
+                 command += "\'  format: $" + str(i.format)
+            command += " } \' >> $job_gal; \n"
+        if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":
+            command += "echo \'  - $" + str(i.name) + "\n \' >> $job_gal;"
+        command += "#end for"
+    return command
+
+# if i.type == "Directory":
+#     command += "\'" + str(i.name) + ": \' >> job.yml \n"
+#     command += "\'  class: Directory \' >> job.yml \n"
+#     command += "\'  path: $" + str(i.name) +"\' >> job.yml \n"    
 
 def build_cwl2galaxy(file, **kwds):
     # process raw cite urls
@@ -386,8 +410,7 @@ def build_cwl2galaxy(file, **kwds):
     # del kwds["cite_url"]
     # citations = list(map(UrlCitation, cite_urls))
     # kwds["bibtex_citations"] = citations
-    
-    ### multiple="true" optional="true"
+  
     tool = Cwl(file)
     kwds["tool"] = kwds.get("tool")
     kwds["id"] = tool.name
@@ -396,11 +419,15 @@ def build_cwl2galaxy(file, **kwds):
     kwds["requirements"] = [] # objet requirement
     kwds["help"] = tool.help
     kwds["inputs"] = tool.inputs
-    kwds["outputs"] = tool.outputs
+    kwds["outputs"] = ['   <data name="job_gal" format="json" from_work_dir= "job_gal.yml"/>', '   <data name="stdout_gal" format="json" from_work_dir="stdout_gal.json" />']
+    for o in tool.outputs:
+        if o.type == "data":
+            kwds["outputs"].append(o)
+    #kwds["outputs"] = tool.outputs
     kwds["macros"] = None 
     kwds["tests"] = []
     kwds["test_case"] = None
-    kwds["version"] = "test version"
+    kwds["version"] = tool.version
     
     # for input in tool.inputs:
     #     print(input.type)
@@ -409,11 +436,8 @@ def build_cwl2galaxy(file, **kwds):
     # tests, test_files = _handle_tests(kwds, test_case)
     # kwds["tests"] = tests
 
- 
     # Render tool content from template.
     contents = _render(kwds)
-    # print("render")
-    # print(contents)
     tool_files = []
     test_files = None
     
@@ -458,6 +482,8 @@ def write_tool(ctx, tool_description, **kwds):
 class Cwl:
     def __init__(self, dict):
         self.dict = dict
+        self.ontology = {}
+        
         if "id" in dict:
             self.name = dict["id"]
         else:
@@ -470,104 +496,223 @@ class Cwl:
             self.help = dict["doc"]
         else:
             self.help = None
-        
+        if "version" in dict:
+            self.version = dict["version"]
+        else:
+            self.version = "0.1.0"
+        if "stdout" in dict:
+            self.stdout = dict["stdout"]
+        else:
+            self.stdout = None
+
+        if "$namespaces" in dict:
+            iterator = 0
+            for owl in dict["$namespaces"]:
+                self.ontology[owl]= dict["$schemas"][iterator], dict["$namespaces"][owl]
+                iterator = iterator + 1
+             
         self.nbinputs = len(dict["inputs"])
         self.inputs = []
     
         if isinstance(self.dict["inputs"], list) :
             #handle syntax " - id: param_name" :
             for i in range(self.nbinputs):
-                self.inputs.append(Input_cwl(self.dict["inputs"][i], self.dict["inputs"][i]["id"]))
+                self.inputs.append(Input_cwl(self.dict["inputs"][i], self.dict["inputs"][i]["id"], self.ontology))
         else:
             for input in self.dict['inputs']:
-                self.inputs.append(Input_cwl(self.dict['inputs'][input], input))
+                self.inputs.append(Input_cwl(self.dict['inputs'][input], input, self.ontology))
                 
         self.nboutputs = len(dict["outputs"])
         self.outputs = []
-        
         if isinstance(self.dict["outputs"], list) :
-            #handle syntax " - id: param_name" :
             for i in range(self.nboutputs):
-                self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"]))
+                self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"], self.stdout, self.ontology))
         else:
             for output in self.dict['outputs']:
-                self.outputs.append(Output_cwl(self.dict['outputs'][output], output))  
-
-       
+                self.outputs.append(Output_cwl(self.dict['outputs'][output], output, self.stdout, self.ontology))  
 
 class Input_cwl(object):
 
-    def __init__(self, dict, name):
-        # Changer type : corespondance avec Galaxy types
+    def __init__(self, dict_in, name, ontology):
         self.name = name
         self.optional = False
-        # handle when type is a list (record, array, enum)
-        #        when there are multiple types
-        #        when it is type[] (array of type)
-        self.type = dict["type"]
-        if self.type[-1]=='?' :
+        self.array = False
+        self.record = False
+        self.record_inputs = []
+        self.enum = False
+        self.enum_options = []
+        self.type = ""
+
+        input = dict_in
+        if isinstance(input["type"], list): # if type field is multiple
+            if len(input["type"])>1:
+                if ('null' in input["type"]) and (len(input["type"]) == 2):
+                    self.optional = True
+                    input["type"].remove('null')         
+                else:
+                    print("PB exception") # TODO : Exception : too much types
+            
+            if isinstance(input['type'][0], str): # simple type
+                self.type = input['type'][0]   
+                    
+            elif isinstance(input['type'][0], dict): # complex type       
+                if input['type'][0]["type"] == "array":  # ARRAY
+                    self.array = True
+                    self.type = input['type'][0]["items"]
+                    
+                if input['type'][0]["type"] == "record": # RECORD
+                    self.record = True
+                    self.type = "record"
+                    for element in input["type"][0]["fields"]:
+                        self.record_inputs.append(Input_cwl(input["type"][0]["fields"][element],element))
+                    
+                if input['type'][0]["type"] == "enum": # ENUM TODO
+                    self.enum = True
+                    self.type = "enum"
+                    if isinstance(input["type"][0]["symbols"],list):
+                        self.enum_options = input["type"][0]["symbols"]
+                    else:
+                        for option in input["type"][0]["symbols"]:
+                            self.enum_options.append(option)
+                    
+        elif isinstance(input["type"], dict): #complex type
+            if input['type']["type"] == "array": # ARRAY
+                self.array = True
+                self.type = input['type']["items"]
+                
+            if input['type']["type"] == "record": # RECORD
+                self.record = True
+                self.type = "record"
+                for element in input["type"]["fields"]:
+                    self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element))
+                
+            if input['type']["type"] == "enum": # ENUM TODO
+                self.enum = True
+                if isinstance(input["type"]["type"]["symbols"],list):
+                    self.enum_options = input["type"]["type"]["symbols"]
+                else:
+                    for option in input["type"]["type"]["symbols"]:
+                        self.enum_options.append(option)
+                        
+        else: # 1 simple type is specified :
+            self.type = (dict_in["type"])
+
+        if self.type[-1] =='?' :
             self.optional = True
             self.type = self.type[:-1]
+            
+        if self.type[-2:] =='[]' :
+            self.array = True
+            self.type = self.type[:-2]
+            
         self.type = CWL_TO_GALAXY_TYPES[self.type]
-        if "label" in dict:
-            self.label = dict["label"]
+        
+
+        if "label" in dict_in:
+            self.label = dict_in["label"]
         else :
             self.label = name
-        if "default" in dict:
-            self.value = dict["default"]
+            
+        if "default" in dict_in:
+            self.value = dict_in["default"]
         else :
             self.value = None
-        if "doc" in dict:
-            self.doc = dict["doc"]  
+            
+        if "doc" in dict_in:
+            self.doc = dict_in["doc"]  
         else :
             self.doc = None
-        if "format" in dict:
-            self.format = dict["format"]    #trouver comment récup le format (RDF)
-        else :
+            
+        if "format" in dict_in:
+            self.format = dict_in["format"]  
+            for owl in ontology:
+                if self.format.split(":")[0] == owl :
+                    ont = get_ontology(ontology[owl][0]).load()
+                    tag = str(self.format.split(":")[1])
+                    self.format = ont.search(iri = str(ontology[owl][1])+tag)[0].label[0]
+        else:
             self.format = None
+            
     def __str__(self):
+        # different if it's a select or an array : 
+        # select : <param ...> <option value =...>... </option> </param>
+        result = ""
         template = '<param type="{0}" name="{1}" label="{2}" optional="{3}"'
+        
         if self.value != None :
             template+=' value="{4}"'
         if self.doc != None :
             template+= ' help="{5}"'
         if self.format != None :
-            template+=' format="{6}"/>' #format only if type is data
-        template+='/>'
-        return template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)
+            template+=' format="{6}"' #format only if type is data
+        if not self.enum :
+            template+='/>'
+        if self.array == True :
+           result += "<repeat name=" + self.name + "> \n          " + template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format) + "\n        </repeat>"
+        elif self.record == True:
+            result = "<repeat name=" + self.name + "> \n"
+            for i in self.record_inputs:
+                result += "            " + str(i) + "\n"
+            result += "        </repeat>"
+        elif self.enum == True:
+            result +=  template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)+">"
+            for option in self.enum_options:
+                result += '\n      <option value= "' + option + '" >' + option + "</option>"
+            result += "\n        </param>"
+        else:
+            result += template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)
 
+        return(result)
+        
 class Output_cwl(object):
-    def __init__(self, dict, name):
+    def __init__(self, dict, name, stdout, ontology):
         self.name = name
         self.optional = False
         self.type = dict["type"]
         if self.type[-1]=='?' :
             self.optional = True
             self.type = self.type[:-1]
-        self.type = CWL_TO_GALAXY_TYPES[self.type]
+       
         if "label" in dict:
             self.label = dict["label"]
         else :
             self.label = name
+            
         if "doc" in dict:
             self.doc = dict["doc"]  
         else :
-            self.doc = None
-        if "format" in dict:
-            self.format = dict["format"]    # TODO : get format from URI ; get format from glob field 
-        else :
-            self.format = None
+            self.doc = None 
+            
         if "outputBinding" in dict and "glob" in dict["outputBinding"]:
             self.from_path = dict["outputBinding"]["glob"]
+        elif self.type == "stdout":
+            self.from_path = stdout 
+            #exception 
         else:
             self.from_path = None
+            
+        if "format" in dict:
+            self.format = dict["format"]  
+            for owl in ontology:
+                if self.format.split(":")[0] == owl :
+                    ont = get_ontology(ontology[owl][0]).load()
+                    tag = str(self.format.split(":")[1])
+                    self.format = ont.search(iri = str(ontology[owl][1])+tag)[0].label[0]  
+        elif self.from_path :
+            self.format = self.from_path.split(".")[-1]
+        else :
+            self.format = None
+       
+            
+        self.type = CWL_TO_GALAXY_TYPES[self.type]
     def __str__(self):
-        template = '<data name="{0}" format="{1}" ' # 'optional="{2}"'
-        if self.doc != None :
-            template+= ' help="{2}"'
-        if self.from_path != None :
-            template+= ' from_work_dir="{3}"'
-        template+='/>'
+        if self.type == "data" :
+            template = '<data name="{0}" format="{1}" ' 
+            if self.doc != None :
+                template+= ' help="{2}"'
+            if self.from_path != None :
+                template+= ' from_work_dir="{3}"'
+            template+='/>'
         return template.format(self.name, self.format, self.doc, self.from_path)
 
 CWL_TO_GALAXY_TYPES = {
@@ -581,9 +726,10 @@ CWL_TO_GALAXY_TYPES = {
     "float": "float",
     "Directory": "data_collection",
     "Any": "field",
-    "array": "data_collection",
+    "array": "repeats",
     "null": "null",
-    "record": "data_collection",
+    "record": "repeats",
+    "stdout": "data"
     }
 
 # Galaxy types :  	Describes the parameter type - each different type as different semantics and the tool form widget is different. Currently valid parameter types are: text, integer, float, boolean, genomebuild, select, color, data_column, hidden, hidden_data, baseurl, file, ftpfile, data, data_collection, library_data, drill_down
