@@ -7,7 +7,6 @@ This tool is a Planemo command named "cwl2 galaxy" that takes few arguments :
 **Approaches & strategies:**
 
 
-### 1. CWL input file 
 CWL input file is converted in a python dictionary, in order to detect special keys.
 An python object "`Cwl`" is created from this dictionary.
 Important keys are:
@@ -50,7 +49,7 @@ Others outputs type can be found in the json output file.
 - `$namespaces` & `$schemas` to load needed ontologies (especially for File formats) using owlready2
 - `label`, `doc`, `version` to document the XML
 
-Browse key `$namespaces` and `$schemas` in the CWL file, in order to create a dictionnary where the key is the key of the namespaces and values are both the schemas and the ontology URL.
+Browse keys `$namespaces` and `$schemas` in the CWL file, in order to create a dictionary where the key is the key of the namespaces and values are both the schemas and the URL ontology.
 When the system comes across a `format` key, it checks if there is an ontology namespaces that matchs with it. If so, it loads the ontology and get the label of the file format corresponding.
 
 **TO DO:** citations & tests
