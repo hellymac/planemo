@@ -362,8 +362,9 @@ def _build_galaxy(**kwds):
 def write_command(inputs):
     """ write the tool XML command : create cwl job file """
     command = ""
-   
+    print(inputs)
     for i in inputs:
+        print(i)
         command += input_to_yaml(i)
         
     command +="\n cwltool '$__tool_directory__/tool.cwl' $job_gal >> $stdout_gal"
@@ -372,9 +373,11 @@ def write_command(inputs):
 def input_to_yaml(i):
     """ Transcribe inputs for the yaml file """
     command = ""
+    
     if i.record :
-        command += "echo \'" + str(i.name) + ": \n"
-        command += input_to_yaml(i.record_inputs) 
+        command += "echo \'" + str(i.name) + ": >> $ job\n"
+        for input in i.record_inputs:
+           command += input_to_yaml(input) 
         
     elif i.array :
         command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
@@ -387,6 +390,7 @@ def input_to_yaml(i):
         if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":
             command += "echo \'  - $" + str(i.name) + "\' >> $job_gal; \n"
         command += "#end for \n"
+        
     elif i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     
         command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
         
