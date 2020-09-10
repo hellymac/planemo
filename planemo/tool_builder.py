@@ -372,31 +372,34 @@ def write_command(inputs):
 def input_to_yaml(i):
     """ Transcribe inputs for the yaml file """
     command = ""
-    if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     
-        command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
-        
-    if i.type == "data":
-        command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
-        command += "echo \'  class: File \' >> $job_gal; \n"
-        command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
-        if i.format: # TO DO : URI
-            command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
-
     if i.record :
         command += "echo \'" + str(i.name) + ": \n"
         command += input_to_yaml(i.record_inputs) 
         
-    if i.array :
+    elif i.array :
         command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
-        "#for $element in enumerate($" + str(i.name) +"):"
+        command += "#for $element in enumerate($" + str(i.name) +"): \n"
         if i.type == "data" :
             command += "echo \'  - {class: File, path: $" + str(i.name)
             if i.format :
                  command += "\'  format: $" + str(i.format)
             command += " } \' >> $job_gal; \n"
         if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":
-            command += "echo \'  - $" + str(i.name) + "\n \' >> $job_gal;"
-        command += "#end for"
+            command += "echo \'  - $" + str(i.name) + "\' >> $job_gal; \n"
+        command += "#end for \n"
+    elif i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     
+        command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
+        
+    elif i.type == "data":
+        command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
+        command += "echo \'  class: File \' >> $job_gal; \n"
+        command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
+        if i.format: # TO DO : URI
+            command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
+    else:
+        print("no input") #raise exception
+
+
     return command
 
 # if i.type == "Directory":
@@ -564,7 +567,7 @@ class Input_cwl(object):
                     self.record = True
                     self.type = "record"
                     for element in input["type"][0]["fields"]:
-                        self.record_inputs.append(Input_cwl(input["type"][0]["fields"][element],element))
+                        self.record_inputs.append(Input_cwl(input["type"][0]["fields"][element],element, ontology))
                     
                 if input['type'][0]["type"] == "enum": # ENUM TODO
                     self.enum = True
@@ -584,7 +587,7 @@ class Input_cwl(object):
                 self.record = True
                 self.type = "record"
                 for element in input["type"]["fields"]:
-                    self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element))
+                    self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element,ontology))
                 
             if input['type']["type"] == "enum": # ENUM TODO
                 self.enum = True
