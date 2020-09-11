@@ -1,0 +1,24 @@
+<tool id="tool" name="tool" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'dependent_parameters: 
+  echo 'itemA: $itemA' >> $job_gal; 
+  echo 'itemB: $itemB' >> $job_gal; 
+
+ cwltool '$__tool_directory__/tool.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <repeat name=dependent_parameters> 
+            <param type="text" name="itemA" label="itemA" optional="False"/>
+            <param type="text" name="itemB" label="itemB" optional="False"/>
+        </repeat>
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" from_work_dir="stdout_gal.json" />
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>
