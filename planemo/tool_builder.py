@@ -395,11 +395,16 @@ def input_to_yaml(i):
         command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
         
     elif i.type == "data":
-        command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
-        command += "echo \'  class: File \' >> $job_gal; \n"
-        command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
-        if i.format: # TO DO : URI
-            command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
+        command += "echo \'" + str(i.name) +": " + "{class: File, path: $" + str(i.name)
+        if i.format:
+            command += ", format: $" + str(i.format) + "} \' >> $job_gal; \n"
+        else:
+            command += "} \' >> $job_gal; \n"
+        # command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
+        # command += "echo \'  class: File \' >> $job_gal; \n"
+        # command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
+        # if i.format: # TO DO : URI
+        #     command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
     else:
         print("no input") #raise exception
 
