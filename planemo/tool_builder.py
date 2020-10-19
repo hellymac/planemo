@@ -6,6 +6,7 @@ Galaxy and CWL tool descriptions.
 
 import os
 import re
+import fnmatch
 import shlex
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ from collections import namedtuple
 
 from planemo import io
 from planemo import templates
+from planemo import get_command
 from owlready2 import *
 #from galaxy.lib.galaxy.tool_util.cwl import representation
 
@@ -359,37 +361,40 @@ def _build_galaxy(**kwds):
     )
 
 ###############  CWL 2 GALAXY  ####################
-def write_command(inputs):
+
+def write_command(inputs, id):
     """ write the tool XML command : create cwl job file """
     command = ""
     for i in inputs:
-        print(i)
-        command += input_to_yaml(i)
-        
-    command +="\n cwltool '$__tool_directory__/tool.cwl' $job_gal >> $stdout_gal"
+        # command += input_to_yaml(i)
+        command += get_command.get_command(i)
+    command +="\ncwltool '$__tool_directory__/" + id + "\' $job_gal >> $stdout_gal"
     return command
 
-def input_to_yaml(i):
+def input_to_yaml(i, *args):
     """ Transcribe inputs for the yaml file """
+
     command = ""
-    
     if i.record :
-        command += "echo \'" + str(i.name) + ": >> $ job\n"
+        command += "echo \'" + str(i.name) + ": \' >> $ job_gal;\n"
         for input in i.record_inputs:
-           command += input_to_yaml(input) 
+            #input.name = i.name + "." + input.name
+            command += "  " + input_to_yaml(input) 
         
     elif i.array :
         command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
-        command += "#for $element in enumerate($" + str(i.name) +"): \n"
+        command += "#for $i, $s in enumerate($" + str(i.name) +"): \n"
         if i.type == "data" :
-            command += "echo \'  - {class: File, path: $" + str(i.name)
+            command += "echo \'  - {class: File, path: $s"
             if i.format :
                  command += "\'  format: $" + str(i.format)
             command += " } \' >> $job_gal; \n"
+
         if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":
-            command += "echo \'  - $" + str(i.name) + "\' >> $job_gal; \n"
+            command += "echo \'  - $s."+str(i.name)+ "\' >> $job_gal; \n"
+
         command += "#end for \n"
-        
+       
     elif i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     
         command += "echo \'" +str(i.name)+": $"+(str(i.name))+ "\' >> $job_gal; \n" 
         
@@ -399,14 +404,8 @@ def input_to_yaml(i):
             command += ", format: $" + str(i.format) + "} \' >> $job_gal; \n"
         else:
             command += "} \' >> $job_gal; \n"
-        # command += "echo \'" + str(i.name) + ": \' >> $job_gal; \n"
-        # command += "echo \'  class: File \' >> $job_gal; \n"
-        # command += "echo \'  path: $" + str(i.name) +"\' >> $job_gal; \n" 
-        # if i.format: # TO DO : URI
-        #     command += "echo \'  format: $" + str(i.format) + "\' >> $job_gal; \n"
     else:
         print("no input") #raise exception
-
 
     return command
 
@@ -415,18 +414,12 @@ def input_to_yaml(i):
 #     command += "\'  class: Directory \' >> job.yml \n"
 #     command += "\'  path: $" + str(i.name) +"\' >> job.yml \n"    
 
-def build_cwl2galaxy(file, **kwds):
-    # process raw cite urls
-    # cite_urls = kwds.get("cite_url", [])
-    # del kwds["cite_url"]
-    # citations = list(map(UrlCitation, cite_urls))
-    # kwds["bibtex_citations"] = citations
-  
+def build_cwl2galaxy2(file, filename, **kwds):
     tool = Cwl(file)
     kwds["tool"] = kwds.get("tool")
     kwds["id"] = tool.name
     kwds["name"] = tool.label
-    kwds["command"] = write_command(tool.inputs) 
+    kwds["command"] = write_command(tool.inputs, tool.name) 
     kwds["requirements"] = [] # objet requirement
     kwds["help"] = tool.help
     kwds["inputs"] = tool.inputs
@@ -434,20 +427,11 @@ def build_cwl2galaxy(file, **kwds):
     for o in tool.outputs:
         if o.type == "data" or o.type == "data_collection":
             kwds["outputs"].append(o)
-    #kwds["outputs"] = tool.outputs
     kwds["macros"] = None 
     kwds["tests"] = []
     kwds["test_case"] = None
     kwds["version"] = tool.version
-    
-    # for input in tool.inputs:
-    #     print(input.type)
-    # command_io = CommandIO(**kwds)
-    # test_case = command_io.test_case()
-    # tests, test_files = _handle_tests(kwds, test_case)
-    # kwds["tests"] = tests
 
-    # Render tool content from template.
     contents = _render(kwds)
     tool_files = []
     test_files = None
@@ -491,14 +475,17 @@ def write_tool(ctx, tool_description, **kwds):
     #             io.info("Copy of %s failed: %s" % (test_file, e))
     
 class Cwl:
-    def __init__(self, dict):
+    def __init__(self, tool):
+        dict = tool.tool
         self.dict = dict
         self.ontology = {}
-        
+        self.cwlclass = dict["class"]
+        self.requirements = tool.requirements
+
         if "id" in dict:
-            self.name = dict["id"]
+            self.name = dict["id"].split("/")[-1]
         else:
-            self.name = "tool"
+            self.name = "tool.cwl"
         if "label" in dict:
             self.label = dict["label"]
         else :
@@ -520,7 +507,6 @@ class Cwl:
             iterator = 0
             for owl in dict["$namespaces"]:
                 self.ontology[owl]= dict["$schemas"][iterator], dict["$namespaces"][owl]
-                print(self.ontology[owl])
                 iterator = iterator + 1
              
         self.nbinputs = len(dict["inputs"])
@@ -536,18 +522,32 @@ class Cwl:
                 
         self.nboutputs = len(dict["outputs"])
         self.outputs = []
-        if isinstance(self.dict["outputs"], list) :
-            for i in range(self.nboutputs):
-                self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"], self.stdout, self.ontology))
+        if self.cwlclass == "Workflow":
+            if isinstance(self.dict["outputs"], list) :
+                for i in range(self.nboutputs):
+                    self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"].split("#")[-1], 
+                    self.stdout, self.requirements, self.ontology, tool.steps))
+            else:
+                for output in self.dict['outputs']:
+                    self.outputs.append(Output_cwl(self.dict['outputs'][output], output.split("#")[-1], self.stdout,
+                    self.requirements, self.ontology, tool.steps))  
+
         else:
-            for output in self.dict['outputs']:
-                self.outputs.append(Output_cwl(self.dict['outputs'][output], output, self.stdout, self.ontology))  
+            if isinstance(self.dict["outputs"], list) :
+                for i in range(self.nboutputs):
+                    self.outputs.append(Output_cwl(self.dict["outputs"][i], self.dict["outputs"][i]["id"].split("#")[-1], 
+                    self.stdout, self.requirements, self.ontology))
+            else:
+                for output in self.dict['outputs']:
+                    self.outputs.append(Output_cwl(self.dict['outputs'][output], output.split("#")[-1], self.stdout, 
+                    self.requirements, self.ontology))  
 
 class Input_cwl(object):
 
     def __init__(self, dict_in, name, ontology):
-        self.name = name
+        self.name = name.split("#")[-1].split("/")[-1]
         self.optional = False
+        self.multiple = False
         self.array = False
         self.record = False
         self.record_inputs = []
@@ -563,6 +563,7 @@ class Input_cwl(object):
                     input["type"].remove('null')         
                 else:
                     print("PB exception") # TODO : Exception : too much types
+                    sys.exit("PB exception")
             
             if isinstance(input['type'][0], str): # simple type
                 self.type = input['type'][0]   
@@ -582,21 +583,26 @@ class Input_cwl(object):
                     self.enum = True
                     self.type = "enum"
                     if isinstance(input["type"][0]["symbols"],list):
-                        self.enum_options = input["type"][0]["symbols"]
+                        for option in input["type"][0]["symbols"]:
+                            self.enum_options.append(option.split('/')[-1])
                     else:
                         for option in input["type"][0]["symbols"]:
-                            self.enum_options.append(option)
+                            self.enum_options.append(option.split('/')[-1])
                     
         elif isinstance(input["type"], dict): #complex type
             if input['type']["type"] == "array": # ARRAY
                 self.array = True
-                self.type = input['type']["items"]
+                self.type = input['type']["items"] #if items are arrays or records do something
+                if self.type == "record":
+                    self.record = True
                 
             if input['type']["type"] == "record": # RECORD
                 self.record = True
                 self.type = "record"
                 for element in input["type"]["fields"]:
-                    self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element,ontology))
+                    self.record_inputs.append(Input_cwl(element, element['name'],ontology))
+                
+                    # self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element,ontology))
                 
             if input['type']["type"] == "enum": # ENUM TODO
                 self.enum = True
@@ -616,14 +622,21 @@ class Input_cwl(object):
         if self.type[-2:] =='[]' :
             self.array = True
             self.type = self.type[:-2]
+
+
             
         self.type = CWL_TO_GALAXY_TYPES[self.type]
         
+        if self.array and self.type == "data":
+            self.multiple = True
+
+        if self.array and self.enum:
+            self.multiple = True
 
         if "label" in dict_in:
             self.label = dict_in["label"]
         else :
-            self.label = name
+            self.label = self.name
             
         if "default" in dict_in:
             self.value = dict_in["default"]
@@ -664,42 +677,65 @@ class Input_cwl(object):
         if self.format != None :
             template+=' format="{6}"' #format only if type is data
         
-        if not self.enum :
+        if self.multiple:
+            template += ' multiple=\"true\"'
+        
+        if not self.enum:
             template+='/>'
         
-        if self.array == True :
-           result += "<repeat name=" + self.name + "> \n          " + template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format) + "\n        </repeat>"
+        if self.type == "data": 
+                result += "          " + template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format) + "\n"
         
-        elif self.record == True:
-            result = "<repeat name=" + self.name + "> \n"
+        elif self.array:
+            result += "<repeat name=\'" + self.name + "\'> \n"
+            result += "          " + template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format) + "\n"
+            result += "</repeat> \n"
+            
+        elif self.record:
+            result = "<section name=\'" + self.name + "\' expanded=\"True\"> \n"
             for i in self.record_inputs:
                 result += "            " + str(i) + "\n"
-            result += "        </repeat>"
+            result += "        </section>"
             
-        elif self.enum == True:
+        elif self.enum:
             result +=  template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)+">"
             for option in self.enum_options:
                 result += '\n      <option value= "' + option + '" >' + option + "</option>"
             result += "\n        </param>"
-        
+
+        elif self.format == "data_collecion":
+            result += "<param name=\"" + self.name + " type=\"data_collection\" collection_type=\"list\" label=\""+ self.label +"\" />"
         else:
             result += template.format(self.type, self.name, self.label, self.optional, self.value, self.doc, self.format)
 
         return(result)
         
 class Output_cwl(object):
-    def __init__(self, dict_out, name, stdout, ontology):
-        self.name = name
+
+    def __init__(self, output, name, stdout, requirements, ontology, *args):
+        self.name = name.split("#")[-1].split("/")[-1]
         self.optional = False
-        
-        output = dict_out
+        self.array = False
+        self.record =  False
+        self.record_outputs = []
+
+        def _wf_get_glob(id_out, steps):
+            """ return glob field from the step """
+            for step in steps:
+                #todo : detect workflow + recursion
+                # if step.tool["class"] == "Workflow" :
+                #     _wf_get_type(id_out, step.steps) # nested workflow
+                for output in step.tool["outputs"]:
+                    if output["id"] == id_out :
+                        self.from_path = output["outputBinding"]["glob"]
+
         if isinstance(output["type"], list): # if type field is multiple
             if len(output["type"])>1:
                 if ('null' in output["type"]) and (len(output["type"]) == 2):
                     self.optional = True
                     output["type"].remove('null')         
                 else:
-                    print("PB exception") # TODO : Exception : too much types
+                    sys.exit("PB exception") # TODO : Exception : too much types
             
             if isinstance(output['type'][0], str): # simple type
                 self.type = output['type'][0]   
@@ -708,7 +744,7 @@ class Output_cwl(object):
                 if output['type'][0]["type"] == "array":  # ARRAY
                     self.array = True
                     self.type = output['type'][0]["items"]
-                    
+                 
                 # if input['type'][0]["type"] == "record": # RECORD
                 #     self.record = True
                 #     self.type = "record"
@@ -719,12 +755,11 @@ class Output_cwl(object):
             if output['type']["type"] == "array": # ARRAY
                 self.array = True
                 self.type = output['type']["items"]
-                
-        #     if input['type']["type"] == "record": # RECORD
-        #         self.record = True
-        #         self.type = "record"
-        #         for element in input["type"]["fields"]:
-        #             self.record_inputs.append(Input_cwl(input["type"]["fields"][element],element,ontology))
+        
+            if output['type']["type"] == "record":
+                self.record = True
+                for element in output["type"]["fields"]:
+                    self.record_outputs.append(Output_cwl(output["type"]["fields"][element],element,stdout, requirements, ontology, args))
 
 
         else: # 1 simple type is specified :
@@ -734,37 +769,41 @@ class Output_cwl(object):
             self.optional = True
             self.type = self.type[:-1]
             
-        if self.type[-2:] =='[]' :
+        if self.type[-2:] =='[]':
             self.array = True
             self.type = self.type[:-2]
-            
-        self.type = CWL_TO_GALAXY_TYPES[self.type]
-        #####
-        
+
+        if self.type == "array":
+            self.array = True
+            self.type = output["items"]
+
         if self.type[-1]=='?' :
             self.optional = True
             self.type = self.type[:-1]
        
-        if "label" in dict_out:
-            self.label = dict_out["label"]
+        if "label" in output:
+            self.label = output["label"]
         else :
-            self.label = name
+            self.label = self.name
             
-        if "doc" in dict_out:
-            self.doc = dict_out["doc"]  
+        if "doc" in output: # get doc for workflow too
+            self.doc = output["doc"]  
         else :
             self.doc = None 
             
-        if "outputBinding" in dict_out and "glob" in dict_out["outputBinding"]:
-            self.from_path = dict_out["outputBinding"]["glob"]
+        if "outputBinding" in output and "glob" in output["outputBinding"]:
+            self.from_path = output["outputBinding"]["glob"]
+
         elif self.type == "stdout":
             self.from_path = stdout 
             #exception 
         else:
             self.from_path = None
+        if "outputSource" in output:
+            _wf_get_glob(output["outputSource"], args[0])
             
-        if "format" in dict_out:
-            self.format = dict_out["format"]  
+        if "format" in output:
+            self.format = output["format"]  
             for owl in ontology:
                 if self.format.split(":")[0] == owl :
                     ont = get_ontology(ontology[owl][0]).load()
@@ -782,28 +821,35 @@ class Output_cwl(object):
         template = ""
         if self.type == "data" :
             if self.array :
-                template += '<collection name= ' + self.name + ' type=\"list\" label=' + self.label + "> \n"
+                template += '<collection name= "' + self.name + '\" type=\"list\" label=\"' + self.label + '\"> \n'
                 if len(self.from_path.split("/"))<1 :
-                    template += '<discover_datasets pattern=\"'+ self.from_path + '\" visible=\"false\" /> \n' 
+                    l = fnmatch.translate(self.from_path) 
+                    pattern = l[0:2]+"P&lt;designation&gt;"+l[4::] # in order to match galaxy pattern
+                    template += '<discover_datasets pattern=\"'+ pattern + '\" visible=\"false\" /> \n' 
                     template += '</collection>'
                 else:
-                    template += '<discover_datasets pattern=\"' + self.from_path.split("/")[-1] + '\" directory=\"'    
+                    l = fnmatch.translate(self.from_path.split("/")[-1])
+                    pattern = l[0:2]+"P&lt;designation&gt;"+l[4::] # in order to match galaxy pattern
+                    template += '<discover_datasets pattern=\"' + pattern  + '\" directory=\"'    
                     template += str(self.from_path)[:-(len(self.from_path.split("/")[-1]))] + '\" visible=\"false\" /> \n' 
+                    template += '</collection>'
             else:
-                template = '<data name="{0}" format="{1}" ' 
+                template = '<data name= \"' + self.name +'\" label=\"' + self.label + '\"'
+                if self.format :
+                    template+=' format= \"'+ self.format +'\"'
                 if self.doc != None :
-                    template+= ' help="{2}"'
+                    template+= ' help=\"' + self.doc + '\"'
                 if self.from_path != None :
-                    template+= ' from_work_dir="{3}"'
+                    template+= ' from_work_dir=\"' + self.from_path +'\"'
                 template+='/>'
             
         if self.type == "data_collection" :
             if self.array :
-                template += '<collection name= ' + self.name + ' type=\"list:list\" label=' + self.label + "> \n"
+                template += '<collection name= \"' + self.name + '\" type=\"list:list\" label=\"' + self.label + '\"> \n'
                 template += '<discover_datasets pattern=\"__designation__\" directory=\"' + self.from_path + '\" visible=\"false\" /> \n' 
                 template += '</collection>'
             else:
-                template += '<collection name= ' + self.name + ' type=\"list\" label=' + self.label + "> \n"
+                template += '<collection name=\"' + self.name + '\" type=\"list\" label=\"' + self.label + '\"> \n'
                 template += '<discover_datasets pattern=\"__designation__\" directory=\"' + self.from_path + '\" visible=\"false\" /> \n' 
                 template += '</collection>'
         return template
@@ -819,10 +865,11 @@ CWL_TO_GALAXY_TYPES = {
     "float": "float",
     "Directory": "data_collection",
     "Any": "field",
-    "array": "repeats",
+    "array": "repeat",
     "null": "null",
-    "record": "repeats",
-    "stdout": "data"
+    "record": "section",
+    "stdout": "data",
+    "record_of_records": "repeat"
     }
 
 # Galaxy types :  	Describes the parameter type - each different type as different semantics and the tool form widget is different. Currently valid parameter types are: text, integer, float, boolean, genomebuild, select, color, data_column, hidden, hidden_data, baseurl, file, ftpfile, data, data_collection, library_data, drill_down

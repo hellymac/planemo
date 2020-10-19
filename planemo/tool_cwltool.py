@@ -121,7 +121,7 @@ def get_tool(ctx, filename):
         _logger.addHandler(stderr_handler)
     else:
         coloredlogs.install(logger=_logger, stream=stderr)
-        print(_logger.handlers)
+        #print(_logger.handlers)
         stderr_handler = _logger.handlers[-1]
     main.configure_logging(ctx, stderr_handler, runtimeContext)
     loadingContext = None
@@ -149,3 +149,42 @@ def get_tool(ctx, filename):
 
     # print(runtimeContext)
     return main.make_tool(uri,loadingContext)
+
+
+# def build_cwl2galaxy(file, filename, **kwds):
+#     tool = Cwl(file)
+#     kwds["tool"] = kwds.get("tool")
+#     kwds["id"] = tool.name
+#     kwds["name"] = tool.label
+#     kwds["command"] = write_command(tool.inputs) 
+#     kwds["requirements"] = [] # objet requirement
+#     kwds["help"] = tool.help
+#     kwds["inputs"] = tool.inputs
+#     kwds["outputs"] = ['   <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>', '   <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />']
+#     for o in tool.outputs:
+#         if o.type == "data" or o.type == "data_collection":
+#             kwds["outputs"].append(o)
+#     #kwds["outputs"] = tool.outputs
+#     kwds["macros"] = None 
+#     kwds["tests"] = []
+#     kwds["test_case"] = None
+#     kwds["version"] = tool.version
+
+#     contents = _render(kwds)
+#     tool_files = []
+#     test_files = None
+    
+#     return ToolDescription(
+#         contents,
+#         tool_files=tool_files,
+#         test_files=test_files
+#     )
+
+# def write_tool(ctx, tool_description, **kwds):
+#     """Write a tool description to the file system guided by supplied CLI kwds."""
+#     output = kwds.get("tool")
+#     if not io.can_write_to_path(output, **kwds):
+#         ctx.exit(1)
+
+#     io.write_file(output, tool_description.contents)
+#     io.info("Tool written to %s" % output)
