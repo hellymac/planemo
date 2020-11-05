@@ -6,13 +6,13 @@ Created on Wed Aug 19 09:49:25 2020
 @author: cjuigne
 """
 """Module describing the planemo ``tool_cwl2galaxy`` command."""
-
+import sys
 import click
 import yaml
-
 from planemo import options
 from planemo import tool_builder
 from planemo.cli import command_function
+from planemo import tool_cwltool
 
 # add name option to name the output file
 @click.command("cwl2galaxy")
@@ -22,9 +22,6 @@ from planemo.cli import command_function
 @command_function
 def cli(ctx, filename, **kwds):
     """Generate tool outline from given CWL file."""
-    file = open(filename, "r")
-    file_str = file.read()
-    file_yml = yaml.load(file_str, Loader=yaml.CLoader)
-    tool_description = tool_builder.build_cwl2galaxy(file_yml, **kwds)
+    tool = tool_cwltool.get_tool(ctx, filename)
+    tool_description = tool_builder.build_cwl2galaxy(tool, filename, **kwds)
     tool_builder.write_tool(ctx, tool_description, **kwds)
-    file.close()
