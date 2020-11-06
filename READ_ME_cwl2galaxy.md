@@ -8,7 +8,9 @@ This tool is a Planemo command named "cwl2 galaxy" that takes few arguments :
 
 **Example:**
 `planemo cwl2galaxy --tool "test_format.xml" --path format.cwl` 
-
+Then, you can add you XML tool with the cwl and other required files in "tools" repository in Galaxy, and add your tool in /config/tool_conf.xml in Galaxy.
+Finally start it up with `sh run.sh`.
+(More explanation about local instance of Galaxy here : https://galaxyproject.org/admin/get-galaxy/)
 
 **Code:**
 `planemo/planemo/commands/cwl2galaxy.py`
