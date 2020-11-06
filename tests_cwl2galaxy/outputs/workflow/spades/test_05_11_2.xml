@@ -1,0 +1,169 @@
+<tool id="spades_assembly_wf.cwl" name="spaces_assembly" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'libraries_metadata:' >> $job_gal ;
+#for $i, $s in enumerate($libraries_metadata): 
+echo '  - ' >> $job_gal ;
+echo '       lib_index: $s.libraries_metadata.lib_index' >> $job_gal ;
+echo '       orientation: $s.libraries_metadata.orientation' >> $job_gal ;
+echo '       lib_type: $s.libraries_metadata.lib_type' >> $job_gal ;
+#end for 
+echo 'libraries_fwd_rev:' >> $job_gal ;
+#for $i, $s in enumerate($libraries_fwd_rev): 
+echo '  - ' >> $job_gal ;
+echo '       lib_index: $s.libraries_fwd_rev.lib_index' >> $job_gal ;
+echo '       fwd_reads: {class: File, path: $s.libraries_fwd_rev.fwd_reads}' >> $job_gal ;
+echo '       rev_reads: {class: File, path: $s.libraries_fwd_rev.rev_reads}' >> $job_gal ;
+#end for 
+echo 'libraries_mono:' >> $job_gal ;
+#for $i, $s in enumerate($libraries_mono): 
+echo '  - ' >> $job_gal ;
+echo '       lib_index: $s.libraries_mono.lib_index' >> $job_gal ;
+echo '       file_type: $s.libraries_mono.file_type' >> $job_gal ;
+echo '       reads: {class: File, path: $s.libraries_mono.reads}' >> $job_gal ;
+#end for 
+#if $pacbio_reads:
+echo 'pacbio_reads:' >> $job_gal ;
+#for $i, $s in enumerate($pacbio_reads): 
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for 
+#end if
+#if $nanopore_reads:
+echo 'nanopore_reads:' >> $job_gal ;
+#for $i, $s in enumerate($nanopore_reads): 
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for 
+#end if
+#if $sanger_reads:
+echo 'sanger_reads:' >> $job_gal ;
+#for $i, $s in enumerate($sanger_reads): 
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for 
+#end if
+#if $trusted_contigs:
+echo 'trusted_contigs:' >> $job_gal ;
+#for $i, $s in enumerate($trusted_contigs): 
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for 
+#end if
+#if $untrusted_contigs:
+echo 'untrusted_contigs:' >> $job_gal ;
+#for $i, $s in enumerate($untrusted_contigs): 
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for 
+#end if
+echo 'auto_kmer_choice: $auto_kmer_choice' >> $job_gal ;
+echo 'kmers: $kmers' >> $job_gal ;
+#if $cov_state:
+echo 'cov_state: $cov_state' >> $job_gal ;
+#end if
+#if $cov_cutoff:
+echo 'cov_cutoff: $cov_cutoff' >> $job_gal ;
+#end if
+echo 'iontorrent: $iontorrent' >> $job_gal ;
+echo 'sc: $sc' >> $job_gal ;
+echo 'onlyassembler: $onlyassembler' >> $job_gal ;
+echo 'careful: $careful' >> $job_gal ;
+
+cwltool '$__tool_directory__/spades_assembly_wf.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <repeat name='libraries_metadata' title='libraries_metadata' > 
+<section name='libraries_metadata' title= 'libraries_metadata' expanded="True"> 
+            <param type="integer" name="lib_index" label="lib_index" optional="True"/>
+            <param type="text" name="orientation" label="orientation" optional="True"/>
+            <param type="text" name="lib_type" label="lib_type" optional="True"/>
+</section> 
+</repeat> 
+
+        <repeat name='libraries_fwd_rev' title='libraries_fwd_rev' > 
+<section name='libraries_fwd_rev' title= 'libraries_fwd_rev' expanded="True"> 
+            <param type="integer" name="lib_index" label="lib_index" optional="True"/>
+                      <param type="data" name="fwd_reads" label="fwd_reads" optional="True"/>
+
+                      <param type="data" name="rev_reads" label="rev_reads" optional="True"/>
+
+</section> 
+</repeat> 
+
+        <repeat name='libraries_mono' title='libraries_mono' > 
+<section name='libraries_mono' title= 'libraries_mono' expanded="True"> 
+            <param type="integer" name="lib_index" label="lib_index" optional="True"/>
+            <param type="text" name="file_type" label="file_type" optional="True"/>
+                      <param type="data" name="reads" label="reads" optional="True"/>
+
+</section> 
+</repeat> 
+
+                  <param type="data" name="pacbio_reads" label="pacbio_reads" optional="True" multiple="true"/>
+
+                  <param type="data" name="nanopore_reads" label="nanopore_reads" optional="True" multiple="true"/>
+
+                  <param type="data" name="sanger_reads" label="sanger_reads" optional="True" multiple="true"/>
+
+                  <param type="data" name="trusted_contigs" label="trusted_contigs" optional="True" multiple="true"/>
+
+                  <param type="data" name="untrusted_contigs" label="untrusted_contigs" optional="True" multiple="true"/>
+
+        <param type="boolean" name="auto_kmer_choice" label="auto_kmer_choice" optional="False" value="True" help="Automatically choose k-mer values.
+K-mer choices can be chosen by SPAdes instead of being entered manually
+"/>
+        <param type="text" name="kmers" label="kmers" optional="False" value="21,33,55" help="K-mers to use, separated by commas.
+Comma-separated list of k-mer sizes to be used
+(all values must be odd, less than 128, listed in ascending order,
+ and smaller than the read length). The default value is 21,33,55
+"/>
+        <param type="select" name="cov_state" label="cov_state" optional="True" help="Coverage cutoff ( 'auto', or 'off', or 'value'). auto if null
+when cov_state=value (User Specific) , cov_cutoff must be provided
+">
+      <option value= "off" >off</option>
+      <option value= "value" >value</option>
+      <option value= "auto" >auto</option>
+        </param>
+        <param type="float" name="cov_cutoff" label="cov_cutoff" optional="True" help="coverage cutoff value (a positive float number )
+"/>
+        <param type="boolean" name="iontorrent" label="iontorrent" optional="False" value="False" help="true if Libraries are IonTorrent reads.
+"/>
+        <param type="boolean" name="sc" label="sc" optional="False" value="False" help="This option is required for MDA.
+true if single-cell data.
+"/>
+        <param type="boolean" name="onlyassembler" label="onlyassembler" optional="False" value="False" help="Run only assembly if true
+(without read error correction)
+"/>
+        <param type="boolean" name="careful" label="careful" optional="False" value="True" help="Careful correction.
+Tries to reduce number of mismatches and short indels.
+Also runs MismatchCorrector, a post processing tool,
+which uses BWA tool (comes with SPAdes).
+"/>
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+        <data name="out_contigs" label="out_contigs" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;contigs\.fasta)\Z" directory="" visible="true" /> 
+</data>
+        <data name="out_scaffolds" label="out_scaffolds" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;scaffolds\.fasta)\Z" directory="" visible="true" /> 
+</data>
+        <data name="out_contig_stats" label="out_contig_stats" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;out_contig_stats\..*)\Z" directory="" visible="true" /> 
+</data>
+        <data name="out_scaffold_stats" label="out_scaffold_stats" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;out_scaffold_stats\..*)\Z" directory="" visible="true" /> 
+</data>
+        <data name="assembly_graph" label="assembly_graph" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;assembly_graph\.fastg)\Z" directory="" visible="true" /> 
+</data>
+        <data name="assembly_graph_with_scaffolds" label="assembly_graph_with_scaffolds" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;assembly_graph_with_scaffolds\.gfa)\Z" directory="" visible="true" /> 
+</data>
+        <collection name= "all_log" type="list" label="all_log"> 
+<discover_datasets pattern="(?P&lt;designation&gt;.*\.log.*)\Z" directory="" visible="true" /> 
+</collection>
+    </outputs>
+    <help><![CDATA[
+        assemby workflow with  SPADES assembler
+
+    ]]></help>
+</tool>

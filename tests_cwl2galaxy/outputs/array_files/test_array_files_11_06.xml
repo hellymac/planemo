@@ -1,0 +1,22 @@
+<tool id="test_array_files.cwl" name="test_array_files.cwl" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'message: $message' >> $job_gal ;
+
+cwltool '$__tool_directory__/test_array_files.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <param type="text" name="message" label="message" optional="False"/>
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+        <collection name= "example_array_out" type="list" label="example_array_out"> 
+<discover_datasets pattern="(?P&lt;designation&gt;example.*\.txt.*)\Z" directory="" visible="true" /> 
+</collection>
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>

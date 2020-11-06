@@ -1,0 +1,25 @@
+<tool id="1st-workflow.cwl" name="1st-workflow.cwl" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'name_of_file_to_extract: $name_of_file_to_extract' >> $job_gal ;
+echo 'tarball: {class: File, path: $tarball}' >> $job_gal ;
+
+cwltool '$__tool_directory__/1st-workflow.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <param type="text" name="name_of_file_to_extract" label="name_of_file_to_extract" optional="False"/>
+                  <param type="data" name="tarball" label="tarball" optional="False"/>
+
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+        <data name="compiled_class" label="compiled_class" auto_format="true"> 
+<discover_datasets pattern="(?P&lt;designation&gt;.*\.class)\Z" directory="" visible="true" /> 
+</data>
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>

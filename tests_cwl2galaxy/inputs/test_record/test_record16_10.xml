@@ -2,9 +2,10 @@
     <requirements>
     </requirements>
     <command detect_errors="exit_code"><![CDATA[
-        echo 'dependent_parameters: ' >> $ job_gal;
-  echo 'itemA: $itemA' >> $job_gal; 
-  echo 'itemB: $itemB' >> $job_gal; 
+        echo 'dependent_parameters:' >> $job_gal ;
+echo '  itemA: $dependent_parameters.itemA' >> $job_gal ;
+echo '  itemB: $dependent_parameters.itemB' >> $job_gal ;
+echo '  itemC: {class: File, path: $dependent_parameters.itemC}' >> $job_gal ;
 
 cwltool '$__tool_directory__/test_record.cwl' $job_gal >> $stdout_gal
     ]]></command>
@@ -12,6 +13,8 @@ cwltool '$__tool_directory__/test_record.cwl' $job_gal >> $stdout_gal
         <section name='dependent_parameters' expanded="True"> 
             <param type="text" name="itemA" label="itemA" optional="False"/>
             <param type="text" name="itemB" label="itemB" optional="False"/>
+                      <param type="data" name="itemC" label="itemC" optional="False"/>
+
         </section>
     </inputs>
     <outputs>

@@ -8,7 +8,7 @@ inputs:
     type: string
     inputBinding:
       position: 1
-  test_int:
-    type: integer
-outputs: []
-
+outputs:
+  echo_out:
+    type: stdout
+stdout: "out.txt"

@@ -1,0 +1,35 @@
+<tool id="test_array_files.cwl" name="test_array_files.cwl" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'syntaxA:' >> $job_gal ;
+#for $i, $s in enumerate($syntaxA):
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for
+echo 'syntaxB:' >> $job_gal ;
+#for $i, $s in enumerate($syntaxB):
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for
+echo 'syntaxC:' >> $job_gal ;
+#for $i, $s in enumerate($syntaxC):
+echo '  - {class: File, path: $s }' >> $job_gal ;
+#end for
+
+cwltool '$__tool_directory__/test_array_files.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+                  <param type="data" name="syntaxA" label="syntaxA" optional="True" multiple="true"/>
+
+                  <param type="data" name="syntaxB" label="syntaxB" optional="False" multiple="true"/>
+
+                  <param type="data" name="syntaxC" label="syntaxC" optional="True" multiple="true"/>
+
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>

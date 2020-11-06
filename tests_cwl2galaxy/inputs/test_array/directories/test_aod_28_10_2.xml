@@ -1,0 +1,32 @@
+<tool id="array_dic_in.cwl" name="array_dic_in.cwl" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'Dirs:' >> $job_gal ;
+#for $i, $s in enumerate($Dirs): 
+mkdir array_Dirs_$i ; 
+#for $j, $t in enumerate($s.array_Dirs): 
+ln -s $t ./array_Dirs_$i/$t.element_identifier ; 
+#end for 
+cd array_Dirs_$i ; 
+echo '   - {class: Directory, path: ' >> $job_gal ; 
+echo \$PWD >> $job_gal ;
+echo '}' >> $job_gal ;
+cd .. ; 
+#end for 
+
+cwltool '$__tool_directory__/array_dic_in.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <repeat name='Dirs' title='Dirs' > 
+<param type="data_collection" name="array_Dirs" label="array_Dirs" optional="False"/></repeat> 
+
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>

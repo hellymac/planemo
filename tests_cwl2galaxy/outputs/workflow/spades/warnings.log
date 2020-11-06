@@ -1,0 +1,11 @@
+
+=== Error correction and assembling warnings:
+ * 0:00:02.034     4M / 1G    WARN    General                 (pair_info_count.cpp       : 339)   Unable to estimate insert size for paired library #0
+ * 0:00:02.034     4M / 1G    WARN    General                 (pair_info_count.cpp       : 343)   Maximum read length (0) is probably too close to K (55)
+ * 0:00:02.041     4M / 1G    WARN    General                 (coverage_uniformity_analyz:  64)    No edges longer than length bound(2000 )
+ * 0:00:02.041     4M / 1G    WARN   ScaffoldingUniqueEdgeAna (scaff_supplementary.cpp   :  23)   not enough edges longer than 2000
+ * 0:00:02.041     4M / 1G    WARN   ScaffoldingUniqueEdgeAna (scaff_supplementary.cpp   :  59)   Less than half of genome in unique edges!
+ * 0:00:02.041     4M / 1G    WARN   ScaffoldingUniqueEdgeAna (scaff_supplementary.cpp   :  23)   not enough edges longer than 1700
+ * 0:00:02.041     4M / 1G    WARN   ScaffoldingUniqueEdgeAna (scaff_supplementary.cpp   :  23)   not enough edges longer than 1400
+ * 0:00:02.042     4M / 1G    WARN   ScaffoldingUniqueEdgeAna (scaff_supplementary.cpp   :  23)   not enough edges longer than 1100
+======= Warnings saved to /jJOoFo/warnings.log

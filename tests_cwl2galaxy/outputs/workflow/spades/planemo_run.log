@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "/home/cjuigne/.local/bin/planemo", line 8, in <module>
+    sys.exit(planemo())
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 764, in __call__
+    return self.main(*args, **kwargs)
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 717, in main
+    rv = self.invoke(ctx)
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 1137, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 956, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 555, in invoke
+    return callback(*args, **kwargs)
+  File "/usr/local/lib64/python3.7/site-packages/click/decorators.py", line 64, in new_func
+    return ctx.invoke(f, obj, *args, **kwargs)
+  File "/usr/local/lib64/python3.7/site-packages/click/core.py", line 555, in invoke
+    return callback(*args, **kwargs)
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/planemo/cli.py", line 190, in handle_blended_options
+    return f(*args, **kwds)
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/planemo/commands/cmd_run.py", line 41, in cli
+    run_result = engine.run(path, job_path)
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/planemo/engine/interface.py", line 57, in run
+    run_response = self._run(runnable, job_path)
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/planemo/engine/cwltool.py", line 19, in _run
+    return cwl.run_cwltool(self._ctx, path, job_path, **self._kwds)
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/planemo/cwl/run.py", line 48, in run_cwltool
+    ensure_cwltool_available()
+  File "/home/cjuigne/.local/lib/python3.7/site-packages/galaxy/tool_util/cwl/cwltool_deps.py", line 103, in ensure_cwltool_available
+    raise ImportError(message)
+ImportError: This feature requires cwltool and dependencies to be available, they are not. cwltool is not unavailable. Library 'schema_salad' unavailable.

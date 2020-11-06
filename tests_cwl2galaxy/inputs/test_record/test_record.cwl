@@ -16,6 +16,10 @@ inputs:
           type: string
           inputBinding:
             prefix: -B
+        itemC:
+          type: File
+          inputBinding:
+            position: 1
   # exclusive_parameters:
   #   type:
   #     - type: record

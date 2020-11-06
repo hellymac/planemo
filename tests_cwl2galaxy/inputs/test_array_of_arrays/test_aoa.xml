@@ -1,0 +1,55 @@
+<tool id="test_aoa.cwl" name="test_aoa.cwl" version="0.1.0" python_template_version="3.5">
+    <requirements>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        echo 'syntaxB:' >> $job_gal ;
+#for $i, $s in enumerate($syntaxB): 
+echo '  - ' >> $job_gal ;
+#for $j, $t in enumerate($s.array_syntaxB): 
+echo '    - $t.array_array_syntaxB' >> $job_gal ;
+#end for 
+#end for 
+echo 'inp:' >> $job_gal ;
+#for $i, $s in enumerate($inp): 
+echo '  - ' >> $job_gal ;
+echo '       instr: $s.instr.instr' >> $job_gal ;
+#end for 
+echo 'libraries_metadata:' >> $job_gal ;
+#for $i, $s in enumerate($libraries_metadata): 
+echo '  - ' >> $job_gal ;
+echo '       lib_index: $s.rec.lib_index' >> $job_gal ;
+echo '       orientation: $s.rec.orientation' >> $job_gal ;
+echo '       lib_type: $s.rec.lib_type' >> $job_gal ;
+#end for 
+
+cwltool '$__tool_directory__/test_aoa.cwl' $job_gal >> $stdout_gal
+    ]]></command>
+    <inputs>
+        <repeat name='syntaxB' title='syntaxB' > 
+<repeat name='array_syntaxB' title='array_syntaxB' > 
+<param type="text" name="array_array_syntaxB" label="array_array_syntaxB" optional="False"/></repeat> 
+</repeat> 
+
+        <repeat name='inp' title='inp' > 
+<section name='instr' title= 'instr' expanded="True"> 
+            <param type="text" name="instr" label="instr" optional="False"/>
+</section> 
+</repeat> 
+
+        <repeat name='libraries_metadata' title='libraries_metadata' > 
+<section name='rec' title= 'rec' expanded="True"> 
+            <param type="integer" name="lib_index" label="lib_index" optional="True"/>
+            <param type="text" name="orientation" label="orientation" optional="True"/>
+            <param type="text" name="lib_type" label="lib_type" optional="True"/>
+</section> 
+</repeat> 
+
+    </inputs>
+    <outputs>
+           <data name="job_gal" format="json" label="parameters" from_work_dir= "job_gal.yml"/>
+           <data name="stdout_gal" format="json" label="outputs list" from_work_dir="stdout_gal.json" />
+    </outputs>
+    <help><![CDATA[
+        TODO: Fill in help.
+    ]]></help>
+</tool>

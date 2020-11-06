@@ -3,17 +3,12 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: echo
+stdout: output.txt
 inputs:
   message:
     type: string
     inputBinding:
       position: 1
-  test_int:
-    type: int
-    default: 3
-  test_File:
-    type: File?
 outputs:
-  test_out:
-    type: int?
-
+  example_out:
+    type: stdout

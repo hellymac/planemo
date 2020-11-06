@@ -1,0 +1,5 @@
+tarball:
+  class: File
+  path: hello.tar
+name_of_file_to_extract: Hello.java
+
