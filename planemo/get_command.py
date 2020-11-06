@@ -111,13 +111,13 @@ def input_to_yaml(i, prefix, array, record):
                     yaml += " format: " + str(i.format)
                 yaml += " }"
             else:
-                yaml += "{class: File, path: " + prefix +'.'+ str(i.name)
+                yaml += "{class: File, path: " + prefix 
                 if i.format :
                     yaml += " format: " + str(i.format)
                 yaml += " }"
 
         if i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":
-            yaml += prefix + '.'+ str(i.name)
+            yaml += prefix 
 
     
     elif i.type == "text" or i.type == "integer" or i.type == "float" or i.type == "boolean" or i.type == "select":     

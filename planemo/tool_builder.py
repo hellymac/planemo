@@ -674,7 +674,7 @@ class Output_cwl(object):
                 elif isinstance(dictionnary["items"], dict):
                     self.array = True
                     if "name" in dictionnary["items"]:
-                        self.array_output = Output_cwl(output=dictionnary["items"],workflow,name=dictionnary["items"]["name"],stdout, requirements, ontology, args)
+                        self.array_output = Output_cwl(dictionnary["items"], workflow, dictionnary["items"]["name"], stdout, requirements, ontology, args[0])
                     # else:
                     #     self.array_output = Output_cwl(output=dictionnary["items"],workflow,name="array_" + self.source, stdout, requirements, ontology, args)
                     # if dictionnary["items"]["type"]=="array":
@@ -685,7 +685,7 @@ class Output_cwl(object):
                     #     print("todo") 
             elif self.type == "record":
                 for field in output["fields"]:
-                    self.array_output.append(Output_cwl(field, workflow, self.name, stdout, requirements, ontology, args))
+                    self.record_outputs.append(Output_cwl(field, workflow, self.name, stdout, requirements, ontology, args[0]))
 
         if "label" in output:
             self.label = output["label"]
