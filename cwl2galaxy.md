@@ -1,15 +1,30 @@
+
+## cwl2galaxy
 This is a tool to automate the Galaxy tool XML file creation from a CWL file ;
 This tool is a Planemo command named "cwl2 galaxy" that takes few arguments :
-- `--force`: to force the creation (overwrite) of the XML tool
 - `--path`: path to CWl tool/worklow
 - `--tool`: name of the XML tool file thaht will be created
 
-**Approaches & strategies:**
+
+**Example:**
+`planemo cwl2galaxy --tool "test_format.xml" --path format.cwl` 
 
 
-CWL input file is converted in a python dictionary, in order to detect special keys.
-An python object "`Cwl`" is created from this dictionary.
+**Code:**
+`planemo/planemo/commands/cwl2galaxy.py`
+`planemo/planemo/tool_builder.py`
+`planemo/planemo/get_command.py`
+
+* * *
+
+
+## 1. **Approaches & strategies:**
+
+
+CWL input file is converted in a dictionary by **cwltool**, in order to detect special keys.
+An python object "`Cwl`" is created from this dictionary, this object will contains a list of inputs and outputs  objects.
 Important keys are:
+- `Class`
 - `Inputs`
 - `Outputs`, `stdout`
 - `$namespaces`, `$schemas`
@@ -28,21 +43,20 @@ Collected information:
 - `label`
 - `doc`
 
-**TO DO:** Verify uses case of array of arrays or records of records are taken into account. 
-Look for ways to include SecondaryFile.
+**TODO:** Look for ways to include SecondaryFile.
 
 ### 1.2/ Outputs, stdout
 For each output an python objest "`Output_cwl`" is created.
 Others parameters than Files are not taken into account by Galaxy
 Collected information:
 - name
-- `glob`
+- `outputBinding/glob`
+- format
 - `label`
 - `doc`
 Galaxy outputs cannot be optional, but if an output file is not found, there is no error, it is just not in outputs.
 Others outputs type can be found in the json output file.
-
-**TO DO:** only name and type are given in the Output field in CWL workflows, so for output data it only gives the type, not the name or the format of the file.
+File, stdout, Directory, array of Files/Directories or File/Directory fields from records
 
 
 ### 1.3/ others keys
@@ -54,10 +68,13 @@ When the system comes across a `format` key, it checks if there is an ontology n
 
 **TO DO:** citations & tests
 
-### 2. Command
+* * *
+
+## 2. Command
 Fist step is the generation of job CWL file. In the command field, we will browse the inputs list and get values given by the user in order to write `job.yml`.
 Then it will execute `cwltool tool.cwl job.yml`.
 
+* * *
 
-
-
+## 3. Tests:
+planemo/tests_cwl2galaxy
