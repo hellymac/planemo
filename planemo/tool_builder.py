@@ -583,9 +583,8 @@ class Input_cwl(object):
                         fill_input_dict(dict_in["type"][0]["type"])
                 # can it be a list ?
             else:
-                print("too many types") # TODO: Exception : too much types
-                sys.exit("PB exception") # TODO: but not if it is a array of file or a file
-
+                raise Exception("Too many types for this input")
+ 
         if isinstance(dict_in["type"], dict): #commentedMap
             fill_input_dict(dict_in["type"])
 
@@ -673,10 +672,17 @@ class Output_cwl(object):
                         self.type = dictionnary["items"]
 
                 elif isinstance(dictionnary["items"], dict):
-                    if dictionnary["items"]["type"]=="array":
-                        print("todo")
-                    elif dictionnary["items"]["type"]=="record":
-                        print("todo") 
+                    self.array = True
+                    if "name" in dictionnary["items"]:
+                        self.array_output = Output_cwl(output=dictionnary["items"],workflow,name=dictionnary["items"]["name"],stdout, requirements, ontology, args)
+                    # else:
+                    #     self.array_output = Output_cwl(output=dictionnary["items"],workflow,name="array_" + self.source, stdout, requirements, ontology, args)
+                    # if dictionnary["items"]["type"]=="array":
+                    #     self.array = True
+                    #     if if dictionnary["items"]["items"] == "File" or dictionnary["items"] == "Directory":
+                    # #     print("todo")
+                    # elif dictionnary["items"]["type"]=="record":
+                    #     print("todo") 
             elif self.type == "record":
                 for field in output["fields"]:
                     self.array_output.append(Output_cwl(field, workflow, self.name, stdout, requirements, ontology, args))
@@ -719,8 +725,7 @@ class Output_cwl(object):
                     if isinstance(output["type"][0]["type"], dict):
                         set_type(output["type"][0]["type"])                        
         else:
-            print("too many types") # TODO: Exception : too much types
-            sys.exit("PB exception") # TODO: but not if it is a array of file or a file
+            raise Exception("Too many types for this output")
         
     def __str__(self):
         template = ""
@@ -729,7 +734,7 @@ class Output_cwl(object):
             for o in self.record_outputs :
                 template += str(o)
             template += "</collection>"
-        if self.type == "File":
+        elif self.type == "File":
             if self.array:
                 template += '<collection name= \"' + self.name + '\" type=\"list\" label=\"' + self.label + self.doc + '\"> \n'
                 self.from_path += '*' # handle scatter mode
@@ -756,7 +761,7 @@ class Output_cwl(object):
             else:
                 template += '</data>'
         
-        if self.type == "Directory":
+        elif self.type == "Directory":
             if self.array :
                 template += '<collection name= \"' + self.name + '\" type=\"list:list\" label=\"' + self.label + '\"> \n'
                 template += '<discover_datasets pattern=\"__designation__\" directory=\"' + self.from_path + '\" visible=\"false\" /> \n' 
@@ -765,6 +770,32 @@ class Output_cwl(object):
                 template += '<collection name=\"' + self.name + '\" type=\"list\" label=\"' + self.label + '\"> \n'
                 template += '<discover_datasets pattern=\"__designation__\" directory=\"' + self.from_path + '\" visible=\"false\" /> \n' 
                 template += '</collection>'
+        elif self.array:
+            if self.array_output:
+                if self.array_output.type == "File":
+                    template += '<collection name= \"' + self.name + '\" type=\"list:list\" label=\"' + self.label + '\"> \n'
+                    if len(self.array_output.from_path.split("/"))<1 :
+                        l = fnmatch.translate(self.array_output.from_path+"*") 
+                        pattern = l[0:2]+"P&lt;designation&gt;"+l[4::] # in order to match galaxy pattern
+                        template += '<discover_datasets pattern=\"'+ pattern + '\" visible=\"true\" /> \n' 
+
+                    else:
+                        l = fnmatch.translate(self.array_output.from_path.split("/")[-1]+"*")
+                        pattern = l[0:2]+"P&lt;designation&gt;"+l[4::] # in order to match galaxy pattern
+                        template += '<discover_datasets pattern=\"' + pattern  + '\" directory=\"'    
+                        template += str(self.array_output.from_path)[0:len(self.array_output.from_path.split("/")[-1])]
+                        template += '</collection>'
+                elif self.array_output.type == "Directory":
+                    template += '<collection name= \"' + self.name + '\" type=\"list:list\" label=\"' + self.label + '\"> \n'
+                    template += '<discover_datasets pattern=\"__designation__\" directory=\"' + self.from_path + '\" visible=\"false\" /> \n' 
+                    template += '</collection>'
+
+                elif self.array_output.type == "record":
+                    template += '<collection name= \"' + self.name + '\" type=\"list:list\" label=\"' + self.label + '\"> \n'
+                    for o in self.array_output.record_outputs:
+                        template += str(o)
+                    template += '</collection>'
+
         return template
 
 SIMPLE_TYPES = ["File", "Directory", "stdout", "boolean", "int", "long", "double", "string", "Any"]
