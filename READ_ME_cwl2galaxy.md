@@ -1,7 +1,7 @@
 
 ## cwl2galaxy
 This is a tool to automate the Galaxy tool XML file creation from a CWL file ;
-This tool is a Planemo command named "cwl2 galaxy" that takes few arguments :
+This tool is a Planemo command named "cwl2galaxy" that takes few arguments :
 - `--path`: path to CWl tool/worklow
 - `--tool`: name of the XML tool file thaht will be created
 
