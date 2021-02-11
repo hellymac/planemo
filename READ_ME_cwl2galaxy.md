@@ -33,6 +33,8 @@ Important keys are:
 - `label`, `doc`, `version`
 
 
+
+
 ### 1.1/ Inputs
 For each input found in the `Inputs` field, an "`Input_cwl`" object is created.
 Collected information:
@@ -80,3 +82,10 @@ Then it will execute `cwltool tool.cwl job.yml`.
 
 ## 3. Tests:
 planemo/tests_cwl2galaxy
+
+
+## fuddings
+
+cwl2galaxy was funded by the EOSC Life european project
+
+
